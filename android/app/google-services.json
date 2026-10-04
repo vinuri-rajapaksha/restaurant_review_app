@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "185126489955",
+    "firebase_url": "https://resturant-review-app-c42e0-default-rtdb.firebaseio.com",
+    "project_id": "resturant-review-app-c42e0",
+    "storage_bucket": "resturant-review-app-c42e0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:185126489955:android:57b861b3a1d332b4048d56",
+        "android_client_info": {
+          "package_name": "com.example.restaurant_review_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWku1NtuMJirLJHs2qvqHqctCHOZ0pjrk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:185126489955:android:fac9ae05f6ea8477048d56",
+        "android_client_info": {
+          "package_name": "com.example.resturant_review_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWku1NtuMJirLJHs2qvqHqctCHOZ0pjrk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
