@@ -1,4 +1,6 @@
-import 'dart:async';
+// MyReviewsScreen (tab 3): the logged-in user's own reviews,
+// with UPDATE (edit) and DELETE through pop-up dialogs
+import 'dart:async'; // For StreamSubscription (live connection)
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -12,16 +14,18 @@ class MyReviewsScreen extends StatefulWidget {
 }
 
 class _MyReviewsScreenState extends State<MyReviewsScreen> {
-  List<Review> myReviews = [];
-  bool loading = true;
-  String errorMessage = '';
-  late StreamSubscription subscription;
-  String userId = FirebaseAuth.instance.currentUser!.uid;
+  List<Review> myReviews = []; // Only the logged-in user's reviews
+  bool loading = true; // Show the spinner until data arrives
+  String errorMessage = ''; // '' = no error
+  late StreamSubscription subscription; // Live connection to Firebase
+  String userId = FirebaseAuth.instance.currentUser!.uid; // Who is logged in
 
+  // Runs once when the tab opens
   @override
   void initState() {
     super.initState();
 
+    // READ: listen to all reviews, but keep only the ones I wrote
     subscription = FirebaseDatabase.instance
         .ref('reviews')
         .onValue
@@ -34,16 +38,18 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               data.forEach((key, value) {
                 Review r = reviewFromFirebase(key.toString(), value);
                 if (r.userId == userId) {
-                  loaded.add(r);
+                  loaded.add(r); // Only my reviews
                 }
               });
             }
 
+            // Save the list, hide the spinner and rebuild
             setState(() {
               myReviews = loaded;
               loading = false;
             });
           },
+          // If loading fails, show an error message
           onError: (error) {
             setState(() {
               errorMessage =
@@ -54,18 +60,21 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         );
   }
 
+  // Stop listening to Firebase when leaving the tab (widget lifecycle)
   @override
   void dispose() {
     subscription.cancel();
     super.dispose();
   }
 
+  // Helper: show a message bar at the bottom of the screen
   void showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  // UPDATE: change the comment in a pop-up
+  // UPDATE: edit the comment in a pop-up dialog
   void editReview(Review review) {
+    // Text box that starts with the old comment
     TextEditingController commentController = TextEditingController(
       text: review.comment,
     );
@@ -81,18 +90,20 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             decoration: const InputDecoration(labelText: 'Your comment'),
           ),
           actions: [
+            // Cancel: just close the pop-up
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
               },
               child: const Text('Cancel'),
             ),
+            // Save: update only the comment of THIS review in Firebase
             TextButton(
               onPressed: () {
                 FirebaseDatabase.instance.ref('reviews/${review.id}').update({
                   'comment': commentController.text,
                 });
-                Navigator.pop(dialogContext);
+                Navigator.pop(dialogContext); // Close the pop-up
                 showMessage('Review updated!');
               },
               child: const Text('Save'),
@@ -103,7 +114,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 
-  // DELETE: ask first, then remove
+  // DELETE: ask for confirmation first, then remove the review
   void deleteReview(Review review) {
     showDialog(
       context: context,
@@ -112,16 +123,18 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           title: const Text('Delete review?'),
           content: Text('Delete your review for ${review.restaurantName}?'),
           actions: [
+            // Cancel: just close the pop-up
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
               },
               child: const Text('Cancel'),
             ),
+            // Delete: remove THIS review from Firebase
             TextButton(
               onPressed: () {
                 FirebaseDatabase.instance.ref('reviews/${review.id}').remove();
-                Navigator.pop(dialogContext);
+                Navigator.pop(dialogContext); // Close the pop-up
                 showMessage('Review deleted');
               },
               child: const Text('Delete'),
@@ -136,6 +149,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Widget build(BuildContext context) {
     Widget body;
 
+    // Spinner, error, empty message or the list
     if (loading) {
       body = const Center(child: CircularProgressIndicator());
     } else if (errorMessage.isNotEmpty) {
@@ -143,6 +157,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     } else if (myReviews.isEmpty) {
       body = const Center(child: Text('You have not written any reviews yet.'));
     } else {
+      // One card per review
       body = ListView.builder(
         itemCount: myReviews.length,
         itemBuilder: (context, index) {
@@ -151,10 +166,14 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: ListTile(
               title: Text(review.restaurantName),
-              subtitle: Text('⭐ ${review.rating} / 5\n${review.comment}'),
+              subtitle: Text(
+                '⭐ ${review.rating} / 5\n${review.comment}',
+              ), // \n = new line
               isThreeLine: true,
+
+              // Edit and Delete buttons on the right
               trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: MainAxisSize.min, // Keep the Row small
                 children: [
                   IconButton(
                     icon: const Icon(Icons.edit),
@@ -182,9 +201,3 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 }
-
-// Listening is the same as on Detail, but it keeps only reviews where userId matches you.
-// ✏️ editReview opens a pop-up with your old comment already typed in. Save uses update(...) to 
-// change just the comment in Firebase.
-// 🗑 deleteReview asks "Delete your review?" Delete uses remove() to delete that review from Firebase.
-// reviews/${review.id} means "go to this exact review by its ID."

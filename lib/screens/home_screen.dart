@@ -1,4 +1,6 @@
-import 'dart:async';
+// HomeScreen (tab 1): all restaurants from Firebase, with search,
+// cuisine filter and a responsive grid
+import 'dart:async'; // For StreamSubscription (live connection)
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../models/resturant.dart';
@@ -12,19 +14,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Restaurant> restaurants = [];
-  bool loading = true;
-  String errorMessage = '';
-  late StreamSubscription subscription;
+  List<Restaurant> restaurants = []; // All restaurants from Firebase
+  bool loading = true; // Show the spinner until data arrives
+  String errorMessage = ''; // '' = no error
+  late StreamSubscription
+  subscription; // Live connection to Firebase (set in initState)
 
-  String searchText = '';
-  String selectedCuisine = 'All';
+  String searchText = ''; // What the user typed in the search bar
+  String selectedCuisine = 'All'; // Dropdown choice ('All' = no filter)
 
+  // Runs once when the screen opens
   @override
   void initState() {
     super.initState();
 
-    // Listen to the restaurants in Firebase
+    // READ: listen to the restaurants in Firebase (runs again every time they change)
     subscription = FirebaseDatabase.instance
         .ref('restaurants')
         .onValue
@@ -32,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
           (event) {
             List<Restaurant> loaded = [];
 
+            // Turn each restaurant from Firebase into a Restaurant object
             if (event.snapshot.value != null) {
               Map data = event.snapshot.value as Map;
               data.forEach((key, value) {
@@ -39,14 +44,16 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             }
 
-            // A to Z by name
+            // Sort A to Z by name
             loaded.sort((a, b) => a.name.compareTo(b.name));
 
+            // Save the list, hide the spinner and rebuild the screen
             setState(() {
               restaurants = loaded;
               loading = false;
             });
           },
+          // If loading fails, show an error message
           onError: (error) {
             setState(() {
               errorMessage = 'Could not load restaurants. Check your internet.';
@@ -56,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
   }
 
+  // Stop listening to Firebase when leaving the screen (widget lifecycle)
   @override
   void dispose() {
     subscription.cancel();
@@ -64,7 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // How should the list look on this screen?
+    // RESPONSIVE: phone = 1 column (portrait) / 2 (landscape)
+    //             tablet = 2 columns (portrait) / 3 (landscape)
     bool landscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     bool tablet = MediaQuery.of(context).size.shortestSide >= 600;
@@ -77,20 +86,20 @@ class _HomeScreenState extends State<HomeScreen> {
       columns = columns + 1;
     }
 
-    // Make a list of only the restaurants that match
+    // FILTER: keep only restaurants that match the cuisine AND the search text
     List<Restaurant> shown = [];
     for (Restaurant r in restaurants) {
       bool cuisineMatches =
           selectedCuisine == 'All' || r.cuisine == selectedCuisine;
       bool nameMatches = r.name.toLowerCase().contains(
-        searchText.toLowerCase(),
+        searchText.toLowerCase(), // Ignore capital letters
       );
       if (cuisineMatches && nameMatches) {
         shown.add(r);
       }
     }
 
-    // What to show under the search bar
+    // What to show under the search bar: spinner, error, empty message or grid
     Widget listArea;
     if (loading) {
       listArea = const Center(child: CircularProgressIndicator());
@@ -99,12 +108,13 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (shown.isEmpty) {
       listArea = const Center(child: Text('No restaurants found'));
     } else {
+      // Grid of restaurant cards (number of columns depends on the screen)
       listArea = GridView.builder(
         padding: const EdgeInsets.all(8),
         itemCount: shown.length,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columns,
-          mainAxisExtent: 300,
+          mainAxisExtent: 300, // Every card is 300 tall
         ),
         itemBuilder: (context, index) {
           return RestaurantCard(restaurant: shown[index]);
@@ -116,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(title: const Text('Restaurants')),
       body: Column(
         children: [
+          // Search bar: filters the list as the user types
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: TextField(
@@ -130,11 +141,14 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
+
+          // Cuisine dropdown: filters by cuisine
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: DropdownButton<String>(
               value: selectedCuisine,
               isExpanded: true,
+              // Turn each cuisine name into a menu option
               items: cuisines.map((c) {
                 return DropdownMenuItem(value: c, child: Text(c));
               }).toList(),
@@ -145,6 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
+
+          // The grid (or spinner/message) fills the rest of the screen
           Expanded(child: listArea),
         ],
       ),
